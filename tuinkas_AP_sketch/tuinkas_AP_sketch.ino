@@ -4,7 +4,7 @@
  * Platform  : LOLIN Wemos D1 Mini (ESP8266)
  * I2C bus   : SDA=D2 (GPIO4), SCL=D1 (GPIO5)
  * Sensoren  : Si7021 · BH1750 · DS3231
- * Batterij  : A0 via spanningsdeler op MicroWakeupper
+ * Batterij  : via mw.readVBatt() (ingebouwde spanningsdeler MicroWakeupper)
  *
  * Bibliotheken (installeer via Arduino Library Manager):
  *   - Adafruit Si7021          (Adafruit)
@@ -41,12 +41,8 @@ static const uint8_t  AP_TIMEOUT_MIN = 15;
 static const uint8_t  MAX_DAYS       = 90;
 static const char*    DATA_DIR       = "/data";
 
-// ── Batterij ADC kalibratie ───────────────────────────────────────
-// Wemos D1 Mini A0 heeft ingebouwde 220k/100k deler (max ±3.2V).
-// MicroWakeupper voegt extra deler toe zodat LiPo (4.2V) past.
-// Kalibreer: meet spanning op batterij-klem met multimeter,
-// lees analogRead(A0), dan:  ADC_SCALE = gemeten_V / raw_waarde
-static const float    ADC_SCALE      = 0.004895f;    // ≈ 5V / 1023
+// ── Batterij ─────────────────────────────────────────────────────
+// mw.readVBatt() gebruikt de ingebouwde spanningsdeler van MicroWakeupper
 static const float    BAT_FULL_V     = 4.20f;
 static const float    BAT_EMPTY_V    = 3.00f;
 
@@ -111,7 +107,7 @@ void setup() {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
-  if (mw.isWakeUpBySwitch()) {
+  if (mw.resetedBySwitch()) {
     // ─── Schakelaar ingedrukt: start WiFi AP ───────────────────────
     Serial.println(F("Wakeup: schakelaar → AP-modus"));
     startAPModus();
@@ -138,7 +134,8 @@ void setup() {
 
     Serial.println(F("Klaar, terug naar sleep"));
     Serial.flush();
-    mw.goToSleep(SLEEP_MIN * 60UL);
+    mw.reenable();
+    ESP.deepSleep((uint64_t)SLEEP_MIN * 60UL * 1000000UL);
     // Hierna stopt de executie — ESP8266 wordt gereset door RTC-alarm
   }
 }
@@ -155,7 +152,8 @@ void loop() {
     Serial.println(F("AP timeout → sleep"));
     WiFi.softAPdisconnect(true);
     Serial.flush();
-    mw.goToSleep(SLEEP_MIN * 60UL);
+    mw.reenable();
+    ESP.deepSleep((uint64_t)SLEEP_MIN * 60UL * 1000000UL);
   }
 }
 
@@ -170,7 +168,7 @@ static void doMeting(Meting& m) {
   m.lux           = bh1750.readLightLevel();
   if (m.lux < 0.0f) m.lux = 0.0f;
   m.behuizingTemp = rtc.getTemperature();
-  m.battV         = analogRead(A0) * ADC_SCALE;
+  m.battV         = mw.readVBatt();
 
   Serial.printf("  T=%.1f°C  H=%.1f%%  L=%.0flux  BT=%.1f°C  BAT=%.2fV\n",
     m.luchtTemp, m.vochtigheid, m.lux, m.behuizingTemp, m.battV);
