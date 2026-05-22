@@ -353,12 +353,11 @@ static void handleData() {
   uint32_t stap = (totaalRegels > 500) ? (totaalRegels + 499) / 500 : 1;
 
   // Stream JSON
-  WiFiClient client = server.client();
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.sendHeader(F("Cache-Control"), F("no-store"));
   server.send(200, F("application/json"), "");
 
-  client.print('[');
+  server.sendContent("[");
   bool eerste = true;
   uint32_t teller = 0;
 
@@ -396,13 +395,14 @@ static void handleData() {
         eerste ? "" : ",",
         v[0].c_str(), v[2].c_str(), v[3].c_str(),
         v[4].c_str(), v[5].c_str(), v[6].c_str());
-      client.print(punt);
+      server.sendContent(punt);
       eerste = false;
-      yield();  // ESP8266 watchdog voeden bij lange loop
+      yield();
     }
     f.close();
   }
-  client.print(']');
+  server.sendContent("]");
+  server.sendContent("");
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -596,9 +596,9 @@ setInterval(laadLive, 60000);
 )rawhtml";
 
 static void handleRoot() {
-  WiFiClient client = server.client();
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, F("text/html; charset=UTF-8"), "");
-  client.print(FPSTR(HTML_1));
-  client.print(FPSTR(HTML_2));
+  server.sendContent_P(HTML_1);
+  server.sendContent_P(HTML_2);
+  server.sendContent("");
 }
