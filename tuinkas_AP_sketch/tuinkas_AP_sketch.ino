@@ -266,7 +266,34 @@ static int batPercentage(float v) {
 // AP MODUS
 // ═══════════════════════════════════════════════════════════════════
 
+static void disableDS3231Alarm1() {
+  // Zet DS3231 Alarm1 interrupt uit zodat timer-alarm niet reset tijdens AP-modus
+  Wire.beginTransmission(0x68);
+  Wire.write(0x0E);
+  Wire.endTransmission(false);
+  Wire.requestFrom(0x68, 1);
+  if (!Wire.available()) return;
+  uint8_t ctrl = Wire.read() & ~0x01;  // wis A1IE bit
+  Wire.beginTransmission(0x68);
+  Wire.write(0x0E);
+  Wire.write(ctrl);
+  Wire.endTransmission();
+  // wis ook Alarm1 vlag in statusregister
+  Wire.beginTransmission(0x68);
+  Wire.write(0x0F);
+  Wire.endTransmission(false);
+  Wire.requestFrom(0x68, 1);
+  if (!Wire.available()) return;
+  uint8_t st = Wire.read() & ~0x01;
+  Wire.beginTransmission(0x68);
+  Wire.write(0x0F);
+  Wire.write(st);
+  Wire.endTransmission();
+}
+
 static void startAPModus() {
+  disableDS3231Alarm1();
+
   if (!si7021.begin()) {
     Serial.println(F("[WARN] Si7021 niet gevonden"));
   }
