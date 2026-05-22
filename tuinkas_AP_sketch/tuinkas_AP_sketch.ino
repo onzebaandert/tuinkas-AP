@@ -29,6 +29,7 @@
 #include <LittleFS.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <DNSServer.h>
 
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURATIE
@@ -55,6 +56,7 @@ static BH1750           bh1750;
 static RTC_DS3231       rtc;
 static MicroWakeupper   mw;
 static ESP8266WebServer server(80);
+static DNSServer        dns;
 
 // ═══════════════════════════════════════════════════════════════════
 // DATA STRUCTUUR
@@ -145,11 +147,13 @@ void setup() {
 // ═══════════════════════════════════════════════════════════════════
 
 void loop() {
+  dns.processNextRequest();
   server.handleClient();
 
   // Na AP_TIMEOUT_MIN minuten terug naar sleep
   if (millis() >= (uint32_t)AP_TIMEOUT_MIN * 60000UL) {
     Serial.println(F("AP timeout → sleep"));
+    dns.stop();
     WiFi.softAPdisconnect(true);
     Serial.flush();
     mw.reenable();
@@ -274,16 +278,24 @@ static void startAPModus() {
     LittleFS.begin();
   }
 
+  WiFi.persistent(false);
   WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_SSID, AP_PASS);
+  delay(200);  // wacht tot AP volledig actief is
+
   Serial.print(F("AP gestart: "));
   Serial.print(AP_SSID);
   Serial.print(F("  IP: "));
   Serial.println(WiFi.softAPIP());
 
-  server.on("/",         handleRoot);
-  server.on("/api/live", handleLive);
-  server.on("/api/data", handleData);
+  // DNS: elke domeinnaam → 192.168.4.1 (captive portal)
+  dns.start(53, "*", WiFi.softAPIP());
+
+  server.on("/",              handleRoot);
+  server.on("/index.html",    handleRoot);
+  server.on("/api/live",      handleLive);
+  server.on("/api/data",      handleData);
+  server.onNotFound(handleRoot);
   server.begin();
   Serial.println(F("Webserver actief"));
 }
