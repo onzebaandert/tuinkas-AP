@@ -38,7 +38,7 @@
 static const char*    AP_SSID        = "TuinKasMeter";
 static const char*    AP_PASS        = "";            // open netwerk
 static const uint8_t  SLEEP_MIN      = 15;
-static const uint8_t  AP_TIMEOUT_MIN = 10;
+static const uint8_t  AP_TIMEOUT_MIN = 15;
 static const uint8_t  MAX_DAYS       = 90;
 static const char*    DATA_DIR       = "/data";
 
