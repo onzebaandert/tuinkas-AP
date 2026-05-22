@@ -38,7 +38,7 @@
 static const char*    AP_SSID        = "TuinKasMeter";
 static const char*    AP_PASS        = "";            // open netwerk
 static const uint8_t  SLEEP_MIN      = 15;
-static const uint8_t  AP_TIMEOUT_MIN = 15;
+static const uint8_t  AP_TIMEOUT_MIN = 10;
 static const uint8_t  MAX_DAYS       = 90;
 static const char*    DATA_DIR       = "/data";
 
@@ -150,14 +150,14 @@ void loop() {
   dns.processNextRequest();
   server.handleClient();
 
-  // Na AP_TIMEOUT_MIN minuten terug naar sleep
+  // Na AP_TIMEOUT_MIN minuten terug naar sleep — wacht op knopdruk
   if (millis() >= (uint32_t)AP_TIMEOUT_MIN * 60000UL) {
-    Serial.println(F("AP timeout → sleep"));
+    Serial.println(F("AP timeout → sleep tot knop"));
     dns.stop();
     WiFi.softAPdisconnect(true);
     Serial.flush();
     mw.reenable();
-    ESP.deepSleep((uint64_t)SLEEP_MIN * 60UL * 1000000UL);
+    ESP.deepSleep(0);
   }
 }
 
