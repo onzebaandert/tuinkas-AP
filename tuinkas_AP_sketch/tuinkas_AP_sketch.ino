@@ -595,11 +595,9 @@ setInterval(laadLive, 60000);
 )rawhtml";
 
 static void handleRoot() {
-  // Controleer heap voor verzenden
-  Serial.printf("Heap vrij: %u bytes\n", ESP.getFreeHeap());
-  String html;
-  html.reserve(5200);
-  html += FPSTR(HTML_1);
-  html += FPSTR(HTML_2);
-  server.send(200, F("text/html; charset=UTF-8"), html);
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, F("text/html; charset=UTF-8"), "");
+  server.sendContent_P(HTML_1);
+  server.sendContent_P(HTML_2);
+  server.sendContent("");
 }
