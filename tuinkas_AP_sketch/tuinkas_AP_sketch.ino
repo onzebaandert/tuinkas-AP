@@ -3,11 +3,11 @@
  * ─────────────────────────────────────────────────────────────────
  * Platform  : LOLIN Wemos D1 Mini (ESP8266)
  * I2C bus   : SDA=D2 (GPIO4), SCL=D1 (GPIO5)
- * Sensoren  : SI7021 · BH1750 · DS3231
+ * Sensoren  : Si7021 · BH1750 · DS3231
  * Batterij  : A0 via spanningsdeler op MicroWakeupper
  *
  * Bibliotheken (installeer via Arduino Library Manager):
- *   - Adafruit SI7021          (Adafruit)
+ *   - Adafruit Si7021          (Adafruit)
  *   - BH1750                   (Christopher Laws / claws)
  *   - RTClib                   (Adafruit)
  *   - MicroWakeupper           (tstoegi)
@@ -16,13 +16,13 @@
  * Flash     : 4MB (FS:2MB OTA:~1019KB)  ← kies dit in Tools→Flash Size
  *
  * Werking:
- *   Timer-wakeup  → SI7021 + BH1750 + DS3231 meten → LittleFS → sleep 15 min
+ *   Timer-wakeup  → Si7021 + BH1750 + DS3231 meten → LittleFS → sleep 15 min
  *   Switch-wakeup → WiFi AP "TuinKasMeter" starten → webserver 15 min → sleep
  * ─────────────────────────────────────────────────────────────────
  */
 
 #include <Wire.h>
-#include <Adafruit_SI7021.h>
+#include <Adafruit_Si7021.h>
 #include <BH1750.h>
 #include <RTClib.h>
 #include <MicroWakeupper.h>
@@ -54,7 +54,7 @@ static const float    BAT_EMPTY_V    = 3.00f;
 // GLOBALE OBJECTEN
 // ═══════════════════════════════════════════════════════════════════
 
-static Adafruit_SI7021  si7021;
+static Adafruit_Si7021  si7021;
 static BH1750           bh1750;
 static RTC_DS3231       rtc;
 static MicroWakeupper   mw;
@@ -121,7 +121,7 @@ void setup() {
     Serial.println(F("Wakeup: timer → meting"));
 
     if (!si7021.begin()) {
-      Serial.println(F("[WARN] SI7021 niet gevonden"));
+      Serial.println(F("[WARN] Si7021 niet gevonden"));
     }
     bh1750.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
 
@@ -266,7 +266,7 @@ static int batPercentage(float v) {
 
 static void startAPModus() {
   if (!si7021.begin()) {
-    Serial.println(F("[WARN] SI7021 niet gevonden"));
+    Serial.println(F("[WARN] Si7021 niet gevonden"));
   }
   bh1750.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
 
