@@ -338,7 +338,7 @@ static void handleData() {
   }
   if (totaalRegels > 0) totaalRegels--;  // trek header af per dag
 
-  uint32_t stap = max(1UL, (totaalRegels + 499) / 500);
+  uint32_t stap = (totaalRegels > 500) ? (totaalRegels + 499) / 500 : 1;
 
   // Stream JSON
   WiFiClient client = server.client();
