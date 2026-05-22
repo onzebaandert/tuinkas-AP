@@ -615,7 +615,6 @@ function laadLive(){
 
 laadLive();
 laadGrafieken();
-setInterval(laadLive, 60000);
 </script>
 </body></html>
 )rawhtml";
