@@ -57,6 +57,7 @@ static RTC_DS3231       rtc;
 static MicroWakeupper   mw;
 static ESP8266WebServer server(80);
 static DNSServer        dns;
+static Meting           cachedMeting;
 
 // ═══════════════════════════════════════════════════════════════════
 // DATA STRUCTUUR
@@ -304,6 +305,9 @@ static void startAPModus() {
     // Geen format() hier — duurt te lang (watchdog reset)
   }
 
+  doMeting(cachedMeting);
+  slaOp(cachedMeting);
+
   WiFi.persistent(false);
   WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_SSID, AP_PASS);
@@ -331,8 +335,7 @@ static void startAPModus() {
 // ═══════════════════════════════════════════════════════════════════
 
 static void handleLive() {
-  Meting m;
-  doMeting(m);
+  const Meting& m = cachedMeting;
 
   char json[192];
   snprintf(json, sizeof(json),
@@ -615,6 +618,7 @@ function laadLive(){
 
 laadLive();
 laadGrafieken();
+setInterval(laadLive, 60000);
 </script>
 </body></html>
 )rawhtml";
