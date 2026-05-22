@@ -124,8 +124,8 @@ void setup() {
     bh1750.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
 
     if (!LittleFS.begin()) {
-      Serial.println(F("[FOUT] LittleFS kan niet starten"));
-      LittleFS.format();
+      Serial.println(F("[FOUT] LittleFS fout — eenmalig formatteren"));
+      LittleFS.format();  // alleen bij meting, nooit in AP-modus
       LittleFS.begin();
     }
 
@@ -273,9 +273,8 @@ static void startAPModus() {
   bh1750.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
 
   if (!LittleFS.begin()) {
-    Serial.println(F("[FOUT] LittleFS kan niet starten"));
-    LittleFS.format();
-    LittleFS.begin();
+    Serial.println(F("[WARN] LittleFS niet beschikbaar, geen historische data"));
+    // Geen format() hier — duurt te lang (watchdog reset)
   }
 
   WiFi.persistent(false);
@@ -596,9 +595,11 @@ setInterval(laadLive, 60000);
 )rawhtml";
 
 static void handleRoot() {
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, F("text/html; charset=UTF-8"), "");
-  server.sendContent_P(HTML_1);
-  server.sendContent_P(HTML_2);
-  server.sendContent("");
+  // Controleer heap voor verzenden
+  Serial.printf("Heap vrij: %u bytes\n", ESP.getFreeHeap());
+  String html;
+  html.reserve(5200);
+  html += FPSTR(HTML_1);
+  html += FPSTR(HTML_2);
+  server.send(200, F("text/html; charset=UTF-8"), html);
 }
