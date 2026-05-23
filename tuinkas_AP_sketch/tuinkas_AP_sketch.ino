@@ -39,7 +39,6 @@ static const char*    AP_SSID        = "TuinKasMeter";
 static const char*    AP_PASS        = "";            // open netwerk
 static const uint8_t  SLEEP_MIN      = 15;
 static const uint8_t  AP_TIMEOUT_MIN = 15;
-static const uint8_t  MAX_DAYS       = 90;
 static const char*    DATA_DIR       = "/data";
 
 // ── Batterij ─────────────────────────────────────────────────────
@@ -82,7 +81,6 @@ static void    ruimOudDataOp();
 static void    startAPModus();
 static void    handleRoot();
 static void    handleLive();
-static void    handleData();
 static String  datumNaarBestand(const DateTime& dt);
 static int     batPercentage(float v);
 
@@ -321,10 +319,9 @@ static void startAPModus() {
   // DNS: elke domeinnaam → 192.168.4.1 (captive portal)
   dns.start(53, "*", WiFi.softAPIP());
 
-  server.on("/",              handleRoot);
-  server.on("/index.html",    handleRoot);
-  server.on("/api/live",      handleLive);
-  server.on("/api/data",      handleData);
+  server.on("/",           handleRoot);
+  server.on("/index.html", handleRoot);
+  server.on("/api/live",   handleLive);
 
   // Captive portal detectie — Android / iOS / Windows sturen deze URLs
   // om te checken of er internet is. Een redirect → OS toont loginprompt
@@ -365,97 +362,10 @@ static void handleLive() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// WEB: /api/data?days=N  →  JSON-array met historische metingen
-// Max 500 punten (downsampling bij veel data)
+// WEB: /  →  Hoofdpagina
 // ═══════════════════════════════════════════════════════════════════
 
-static void handleData() {
-  int dagen = 7;
-  if (server.hasArg(F("days"))) {
-    dagen = constrain(server.arg(F("days")).toInt(), 1, MAX_DAYS);
-  }
-
-  // Tel eerst het totale aantal regels om samplestap te bepalen
-  uint32_t nu = rtc.now().unixtime();
-  uint32_t totaalRegels = 0;
-
-  for (int d = dagen - 1; d >= 0; d--) {
-    DateTime dt(nu - (uint32_t)d * 86400UL);
-    String pad = String(DATA_DIR) + "/" + datumNaarBestand(dt) + ".csv";
-    if (!LittleFS.exists(pad)) continue;
-    File f = LittleFS.open(pad, "r");
-    if (!f) continue;
-    while (f.available()) {
-      f.readStringUntil('\n');
-      totaalRegels++;
-    }
-    f.close();
-  }
-  if (totaalRegels > 0) totaalRegels--;  // trek header af per dag
-
-  uint32_t stap = (totaalRegels > 500) ? (totaalRegels + 499) / 500 : 1;
-
-  // Stream JSON
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.sendHeader(F("Cache-Control"), F("no-store"));
-  server.send(200, F("application/json"), "");
-
-  server.sendContent("[");
-  bool eerste = true;
-  uint32_t teller = 0;
-
-  for (int d = dagen - 1; d >= 0; d--) {
-    DateTime dt(nu - (uint32_t)d * 86400UL);
-    String pad = String(DATA_DIR) + "/" + datumNaarBestand(dt) + ".csv";
-    if (!LittleFS.exists(pad)) continue;
-    File f = LittleFS.open(pad, "r");
-    if (!f) continue;
-
-    f.readStringUntil('\n');  // skip header
-
-    while (f.available()) {
-      String regel = f.readStringUntil('\n');
-      regel.trim();
-      if (regel.length() < 10) continue;
-
-      teller++;
-      if ((teller % stap) != 0) continue;
-
-      // Parse CSV: ts,tijd,luchtT,vocht,lux,bhuizT,battV
-      String v[7];
-      int vi = 0, start = 0;
-      for (int i = 0; i <= (int)regel.length() && vi < 7; i++) {
-        if (i == (int)regel.length() || regel[i] == ',') {
-          v[vi++] = regel.substring(start, i);
-          start = i + 1;
-        }
-      }
-      if (vi < 7) continue;
-
-      char punt[160];
-      snprintf(punt, sizeof(punt),
-        "%s{\"ts\":%s,\"t\":%s,\"h\":%s,\"l\":%s,\"ct\":%s,\"b\":%s}",
-        eerste ? "" : ",",
-        v[0].c_str(), v[2].c_str(), v[3].c_str(),
-        v[4].c_str(), v[5].c_str(), v[6].c_str());
-      server.sendContent(punt);
-      eerste = false;
-      yield();
-    }
-    f.close();
-  }
-  server.sendContent("]");
-  server.sendContent("");
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// WEB: /  →  Hoofdpagina (PROGMEM-blokken gestreamd)
-// ═══════════════════════════════════════════════════════════════════
-
-// HTML opgedeeld in stukken om PROGMEM-limiet (~32KB per literal) te
-// respecteren en heap-gebruik laag te houden.
-
-static const char HTML_1[] PROGMEM = R"rawhtml(<!DOCTYPE html>
+static const char HTML[] PROGMEM = R"rawhtml(<!DOCTYPE html>
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
@@ -465,18 +375,11 @@ static const char HTML_1[] PROGMEM = R"rawhtml(<!DOCTYPE html>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;padding:12px}
 h1{color:#38bdf8;text-align:center;padding:12px 0;font-size:1.5em}
-h2{color:#7dd3fc;font-size:1em;margin-bottom:8px}
 .kaarten{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
 .kaart{background:#1e293b;border-radius:10px;padding:14px;text-align:center;border:1px solid #334155}
 .kaart .waarde{font-size:1.9em;font-weight:700;color:#38bdf8;line-height:1}
 .kaart .eenheid{font-size:.75em;color:#94a3b8;margin-top:2px}
 .kaart .naam{font-size:.7em;color:#64748b;margin-top:6px;text-transform:uppercase;letter-spacing:.04em}
-.grafiek-blok{background:#1e293b;border-radius:10px;padding:14px;margin:10px 0;border:1px solid #334155}
-.balk{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-select,button{background:#1e293b;color:#e2e8f0;border:1px solid #38bdf8;border-radius:6px;padding:5px 10px;font-size:.85em}
-button{background:#38bdf8;color:#0f172a;font-weight:700;cursor:pointer}
-button:hover{background:#7dd3fc}
-#status{font-size:.78em;color:#94a3b8}
 .bat-balk{height:6px;border-radius:3px;background:#334155;margin-top:4px;overflow:hidden}
 .bat-vulling{height:100%;border-radius:3px;background:#4ade80;transition:width .5s}
 </style>
@@ -511,136 +414,31 @@ button:hover{background:#7dd3fc}
     <div class="bat-balk"><div class="bat-vulling" id="cBatBalk" style="width:0%"></div></div>
   </div>
 </div>
-<div class="balk">
-  <label>Periode:
-    <select id="selDagen" onchange="laadGrafieken()">
-      <option value="1">Vandaag</option>
-      <option value="7" selected>7 dagen</option>
-      <option value="30">30 dagen</option>
-      <option value="90">90 dagen</option>
-    </select>
-  </label>
-  <button onclick="laadGrafieken()">&#8635; Vernieuwen</button>
-  <span id="status"></span>
-</div>
-<div class="grafiek-blok">
-  <h2>Temperatuur &amp; Vochtigheid</h2>
-  <canvas id="gTH"></canvas>
-</div>
-<div class="grafiek-blok">
-  <h2>Lichtsterkte (lux)</h2>
-  <canvas id="gLux"></canvas>
-</div>
-<div class="grafiek-blok">
-  <h2>Batterij (V)</h2>
-  <canvas id="gBat"></canvas>
-</div>
-)rawhtml";
-
-static const char HTML_2[] PROGMEM = R"rawhtml(<script>
-const SCHAAL = {
-  x:{ticks:{color:'#64748b',maxTicksLimit:10},grid:{color:'#1e293b'}},
-  y:{ticks:{color:'#94a3b8'},grid:{color:'#334155'}}
-};
-const BASE_OPTS = {
-  responsive:true,
-  animation:false,
-  plugins:{legend:{labels:{color:'#e2e8f0'}}},
-  scales:{x:SCHAAL.x,y:SCHAAL.y}
-};
-let gTH, gLux, gBat;
-
-function tijdLabel(ts){
-  const d = new Date(ts*1000);
-  return d.toLocaleDateString('nl',{month:'short',day:'numeric'})
-    +' '+d.toLocaleTimeString('nl',{hour:'2-digit',minute:'2-digit'});
-}
-
+<script>
 function luxLabel(v){
-  return v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString();
+  return v>=1000?(v/1000).toFixed(1)+'k':Math.round(v).toString();
 }
-
-function maakGrafieken(labels, data){
-  if(gTH) gTH.destroy();
-  gTH = new Chart(document.getElementById('gTH'),{
-    type:'line',
-    data:{labels, datasets:[
-      {label:'Luchttemp (°C)',data:data.map(d=>d.t),
-       borderColor:'#f87171',tension:.3,pointRadius:0,borderWidth:1.5},
-      {label:'Vochtigheid (%)',data:data.map(d=>d.h),
-       borderColor:'#38bdf8',tension:.3,pointRadius:0,borderWidth:1.5,yAxisID:'y2'}
-    ]},
-    options:{...BASE_OPTS, scales:{
-      x:SCHAAL.x,
-      y:{...SCHAAL.y, position:'left'},
-      y2:{...SCHAAL.y, position:'right', grid:{drawOnChartArea:false}}
-    }}
-  });
-
-  if(gLux) gLux.destroy();
-  gLux = new Chart(document.getElementById('gLux'),{
-    type:'line',
-    data:{labels, datasets:[
-      {label:'Lux',data:data.map(d=>d.l),
-       borderColor:'#facc15',tension:.3,pointRadius:0,borderWidth:1.5,
-       fill:true,backgroundColor:'rgba(250,204,21,.08)'}
-    ]},
-    options:BASE_OPTS
-  });
-
-  if(gBat) gBat.destroy();
-  gBat = new Chart(document.getElementById('gBat'),{
-    type:'line',
-    data:{labels, datasets:[
-      {label:'Batterij (V)',data:data.map(d=>d.b),
-       borderColor:'#4ade80',tension:.3,pointRadius:0,borderWidth:1.5}
-    ]},
-    options:BASE_OPTS
-  });
-}
-
-function laadGrafieken(){
-  const dagen = document.getElementById('selDagen').value;
-  document.getElementById('status').textContent = 'Laden…';
-  fetch('/api/data?days='+dagen)
-    .then(r => r.json())
-    .then(data => {
-      if(!data.length){ document.getElementById('status').textContent='Geen data'; return; }
-      maakGrafieken(data.map(d=>tijdLabel(d.ts)), data);
-      document.getElementById('status').textContent =
-        'Bijgewerkt '+new Date().toLocaleTimeString('nl')+
-        ' — '+data.length+' meetpunten';
-    })
-    .catch(e => document.getElementById('status').textContent = 'Fout: '+e);
-}
-
 function laadLive(){
   fetch('/api/live')
-    .then(r => r.json())
-    .then(d => {
-      document.getElementById('cLuchtT').textContent  = d.luchtT.toFixed(1);
-      document.getElementById('cVocht').textContent   = d.vocht.toFixed(1);
-      document.getElementById('cLux').textContent     = luxLabel(d.lux);
-      document.getElementById('cBhuizT').textContent  = d.bhuizT.toFixed(1);
-      document.getElementById('cBattV').textContent   = d.battV.toFixed(2);
-      document.getElementById('cBatBalk').style.width = d.battPct+'%';
-      const kleur = d.battPct>50?'#4ade80':d.battPct>20?'#facc15':'#f87171';
-      document.getElementById('cBatBalk').style.background = kleur;
+    .then(r=>r.json())
+    .then(d=>{
+      document.getElementById('cLuchtT').textContent = d.luchtT.toFixed(1);
+      document.getElementById('cVocht').textContent  = d.vocht.toFixed(1);
+      document.getElementById('cLux').textContent    = luxLabel(d.lux);
+      document.getElementById('cBhuizT').textContent = d.bhuizT.toFixed(1);
+      document.getElementById('cBattV').textContent  = d.battV.toFixed(2);
+      document.getElementById('cBatBalk').style.width      = d.battPct+'%';
+      document.getElementById('cBatBalk').style.background =
+        d.battPct>50?'#4ade80':d.battPct>20?'#facc15':'#f87171';
     })
     .catch(console.error);
 }
-
 laadLive();
-laadGrafieken();
-setInterval(laadLive, 60000);
+setInterval(laadLive,60000);
 </script>
 </body></html>
 )rawhtml";
 
 static void handleRoot() {
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, F("text/html; charset=UTF-8"), "");
-  server.sendContent_P(HTML_1);
-  server.sendContent_P(HTML_2);
-  server.sendContent("");
+  server.send_P(200, "text/html; charset=UTF-8", HTML);
 }
