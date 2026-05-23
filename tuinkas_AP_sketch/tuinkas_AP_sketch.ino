@@ -153,7 +153,7 @@ void loop() {
 
   // Ververs sensordata elke 30 seconden
   static uint32_t vorigeUpdate = 0;
-  if (millis() - vorigeUpdate >= 30000UL) {
+  if (millis() - vorigeUpdate >= 1800000UL) {
     doMeting(cachedMeting);
     vorigeUpdate = millis();
   }
@@ -544,7 +544,7 @@ function ll(){
       d.battPct>50?'#4ade80':d.battPct>20?'#facc15':'#f87171';
   }).catch(console.error);
 }
-ll();lg();setInterval(ll,30000);
+ll();lg();setInterval(ll,1800000);
 </script></body></html>
 )rawhtml";
 
