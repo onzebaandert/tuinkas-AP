@@ -48,18 +48,6 @@ static const float    BAT_FULL_V     = 4.20f;
 static const float    BAT_EMPTY_V    = 3.00f;
 
 // ═══════════════════════════════════════════════════════════════════
-// GLOBALE OBJECTEN
-// ═══════════════════════════════════════════════════════════════════
-
-static Adafruit_Si7021  si7021;
-static BH1750           bh1750;
-static RTC_DS3231       rtc;
-static MicroWakeupper   mw;
-static ESP8266WebServer server(80);
-static DNSServer        dns;
-static Meting           cachedMeting;
-
-// ═══════════════════════════════════════════════════════════════════
 // DATA STRUCTUUR
 // ═══════════════════════════════════════════════════════════════════
 
@@ -71,6 +59,18 @@ struct Meting {
   float     behuizingTemp;
   float     battV;
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// GLOBALE OBJECTEN
+// ═══════════════════════════════════════════════════════════════════
+
+static Adafruit_Si7021  si7021;
+static BH1750           bh1750;
+static RTC_DS3231       rtc;
+static MicroWakeupper   mw;
+static ESP8266WebServer server(80);
+static DNSServer        dns;
+static Meting           cachedMeting;
 
 // ═══════════════════════════════════════════════════════════════════
 // FORWARD DECLARATIES
