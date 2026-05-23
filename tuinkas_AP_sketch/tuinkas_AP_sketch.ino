@@ -494,12 +494,12 @@ canvas{width:100%;display:block}
 )rawhtml";
 
 static const char HTML_2[] PROGMEM = R"rawhtml(<script>
-function dc(id,vals,kleur){
+function dc(id,vals,ts,kleur){
   const cv=document.getElementById(id);
-  cv.width=cv.parentElement.clientWidth-24; cv.height=150;
-  const W=cv.width,H=150,ctx=cv.getContext('2d');
-  const P={t:8,r:8,b:28,l:42},CW=W-P.l-P.r,CH=H-P.t-P.b;
-  if(vals.length<2)return;
+  cv.width=cv.parentElement.clientWidth-24;cv.height=165;
+  const W=cv.width,H=165,ctx=cv.getContext('2d');
+  const P={t:8,r:8,b:36,l:42},CW=W-P.l-P.r,CH=H-P.t-P.b;
+  const N=vals.length;if(N<2)return;
   let mn=vals[0],mx=vals[0];
   vals.forEach(v=>{if(v<mn)mn=v;if(v>mx)mx=v;});
   if(mn===mx){mn-=1;mx+=1;}
@@ -511,9 +511,19 @@ function dc(id,vals,kleur){
     ctx.fillStyle='#94a3b8';ctx.font='10px system-ui';ctx.textAlign='right';
     ctx.fillText((mx-(mx-mn)*i/4).toFixed(1),P.l-3,y+4);
   }
+  function fmt(t){
+    const d=new Date(t*1000);
+    return d.getDate()+'/'+(d.getMonth()+1)+' '+
+      String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+  const step=Math.max(1,Math.floor(N/4));
+  ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillStyle='#64748b';
+  for(let i=0;i<N;i+=step){
+    ctx.fillText(fmt(ts[i]),P.l+CW*i/(N-1),H-4);
+  }
   ctx.strokeStyle=kleur;ctx.lineWidth=1.5;ctx.beginPath();
   vals.forEach((v,i)=>{
-    const x=P.l+CW*i/(vals.length-1),y=P.t+CH*(1-(v-mn)/(mx-mn));
+    const x=P.l+CW*i/(N-1),y=P.t+CH*(1-(v-mn)/(mx-mn));
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
@@ -524,10 +534,11 @@ function lg(){
   document.getElementById('st').textContent='Laden…';
   fetch('/api/data?days='+d).then(r=>r.json()).then(data=>{
     if(!data.length){document.getElementById('st').textContent='Geen data';return;}
-    dc('gT',data.map(d=>d.t),'#f87171');
-    dc('gH',data.map(d=>d.h),'#38bdf8');
-    dc('gL',data.map(d=>d.l),'#facc15');
-    dc('gB',data.map(d=>d.b),'#4ade80');
+    const ts=data.map(d=>d.ts);
+    dc('gT',data.map(d=>d.t),ts,'#f87171');
+    dc('gH',data.map(d=>d.h),ts,'#38bdf8');
+    dc('gL',data.map(d=>d.l),ts,'#facc15');
+    dc('gB',data.map(d=>d.b),ts,'#4ade80');
     document.getElementById('st').textContent=
       'Bijgewerkt '+new Date().toLocaleTimeString('nl')+' — '+data.length+' punten';
   }).catch(e=>document.getElementById('st').textContent='Fout: '+e);
