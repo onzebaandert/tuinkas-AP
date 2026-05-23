@@ -325,7 +325,21 @@ static void startAPModus() {
   server.on("/index.html",    handleRoot);
   server.on("/api/live",      handleLive);
   server.on("/api/data",      handleData);
-  server.onNotFound(handleRoot);
+
+  // Captive portal detectie — Android / iOS / Windows sturen deze URLs
+  // om te checken of er internet is. Een redirect → OS toont loginprompt
+  // én gebruikt dan de WiFi-route voor alle verkeer.
+  auto redir = [](){
+    server.sendHeader(F("Location"), F("http://192.168.4.1/"));
+    server.send(302, F("text/plain"), "");
+  };
+  server.on(F("/generate_204"),              redir);  // Android
+  server.on(F("/gen_204"),                   redir);  // Android oud
+  server.on(F("/hotspot-detect.html"),       redir);  // Apple
+  server.on(F("/library/test/success.html"), redir);  // Apple
+  server.on(F("/ncsi.txt"),                  redir);  // Windows
+  server.on(F("/connecttest.txt"),           redir);  // Windows
+  server.onNotFound(redir);
   server.begin();
   Serial.println(F("Webserver actief"));
 }
