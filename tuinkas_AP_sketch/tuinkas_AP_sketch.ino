@@ -150,6 +150,13 @@ void loop() {
   dns.processNextRequest();
   server.handleClient();
 
+  // Ververs sensordata elke 30 seconden
+  static uint32_t vorigeUpdate = 0;
+  if (millis() - vorigeUpdate >= 30000UL) {
+    doMeting(cachedMeting);
+    vorigeUpdate = millis();
+  }
+
   // Na AP_TIMEOUT_MIN minuten terug naar sleep — wacht op knopdruk
   if (millis() >= (uint32_t)AP_TIMEOUT_MIN * 60000UL) {
     Serial.println(F("AP timeout → sleep tot knop"));
@@ -347,7 +354,6 @@ static void startAPModus() {
 // ═══════════════════════════════════════════════════════════════════
 
 static void handleLive() {
-  doMeting(cachedMeting);
   const Meting& m = cachedMeting;
 
   char json[192];
