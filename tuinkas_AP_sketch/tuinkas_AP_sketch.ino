@@ -513,8 +513,8 @@ function dc(id,vals,ts,kleur){
   }
   function fmt(t){
     const d=new Date(t*1000);
-    return d.getDate()+'/'+(d.getMonth()+1)+' '+
-      String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    return d.getUTCDate()+'/'+(d.getUTCMonth()+1)+' '+
+      String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
   }
   const step=Math.max(1,Math.floor(N/4));
   ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillStyle='#64748b';
