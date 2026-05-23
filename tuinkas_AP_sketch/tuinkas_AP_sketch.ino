@@ -347,7 +347,8 @@ static void startAPModus() {
 // ═══════════════════════════════════════════════════════════════════
 
 static void handleLive() {
-  doMeting(cachedMeting);   // lees sensoren opnieuw uit
+  doMeting(cachedMeting);
+  const Meting& m = cachedMeting;
 
   char json[192];
   snprintf(json, sizeof(json),
